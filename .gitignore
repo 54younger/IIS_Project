@@ -1,4 +1,4 @@
 # Ignore environment variable files
 .env
-
-
+# Ignore Python cache files
+__pycache__/behavioral_interview.cpython-312.pyc

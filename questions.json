@@ -1,0 +1,224 @@
+{
+   "L1": [
+      {
+         "id": "L1_01",
+         "text": "How are you feeling today?",
+         "robot_action": "smile_nod",
+         "emotion_trigger": "relaxed"
+      },
+      {
+         "id": "L1_02",
+         "text": "Do you prefer early mornings or late nights?",
+         "robot_action": "smile",
+         "emotion_trigger": "light_engagement"
+      },
+      {
+         "id": "L1_03",
+         "text": "Coffee or tea?",
+         "robot_action": "smile_tilt_head",
+         "emotion_trigger": "pleasant_choice"
+      },
+      {
+         "id": "L1_04",
+         "text": "Do you enjoy working alone or with others?",
+         "robot_action": "gentle_nod",
+         "emotion_trigger": "thinking"
+      },
+      {
+         "id": "L1_05",
+         "text": "What made you smile recently?",
+         "robot_action": "soft_smile",
+         "emotion_trigger": "positive_recall"
+      },
+      {
+         "id": "L1_06",
+         "text": "Do you prefer planning ahead or going with the flow?",
+         "robot_action": "tilt_head_light",
+         "emotion_trigger": "light_reflection"
+      },
+      {
+         "id": "L1_07",
+         "text": "What is your favorite time of day?",
+         "robot_action": "smile",
+         "emotion_trigger": "neutral"
+      },
+      {
+         "id": "L1_08",
+         "text": "Do you like trying new things?",
+         "robot_action": "slight_nod",
+         "emotion_trigger": "curiosity"
+      },
+      {
+         "id": "L1_09",
+         "text": "Are you more talkative or quiet?",
+         "robot_action": "listen_pose",
+         "emotion_trigger": "self_reflection"
+      },
+      {
+         "id": "L1_10",
+         "text": "What kind of music do you enjoy?",
+         "robot_action": "happy_blink",
+         "emotion_trigger": "pleasant_memory"
+      },
+      {
+         "id": "L1_11",
+         "text": "Do you prefer sunny days or rainy days?",
+         "robot_action": "smile",
+         "emotion_trigger": "simple_choice"
+      },
+      {
+         "id": "L1_12",
+         "text": "What helps you relax?",
+         "robot_action": "gentle_nod",
+         "emotion_trigger": "calm"
+      }
+   ],
+   "L2": [
+      {
+         "id": "L2_01",
+         "text": "Are you ready for a slightly harder question?",
+         "robot_action": "tilt_head_challenge",
+         "emotion_trigger": "anticipation"
+      },
+      {
+         "id": "L2_02",
+         "text": "What is something that challenged you recently?",
+         "robot_action": "attentive_pose",
+         "emotion_trigger": "thoughtful"
+      },
+      {
+         "id": "L2_03",
+         "text": "Do you prefer doing things quickly or doing them well?",
+         "robot_action": "eyebrow_raise",
+         "emotion_trigger": "mild_conflict"
+      },
+      {
+         "id": "L2_04",
+         "text": "What helps you stay focused?",
+         "robot_action": "nod_slow",
+         "emotion_trigger": "reflective"
+      },
+      {
+         "id": "L2_05",
+         "text": "What is one thing people often misunderstand about you?",
+         "robot_action": "concern_pose",
+         "emotion_trigger": "soft_emotion"
+      },
+      {
+         "id": "L2_06",
+         "text": "What motivates you to keep going when things get tough?",
+         "robot_action": "encouraging_nod",
+         "emotion_trigger": "warm_reflection"
+      },
+      {
+         "id": "L2_07",
+         "text": "Do you find it easy or difficult to ask for help?",
+         "robot_action": "gentle_lean_in",
+         "emotion_trigger": "hesitant"
+      },
+      {
+         "id": "L2_08",
+         "text": "What type of tasks drain your energy?",
+         "robot_action": "serious_nod",
+         "emotion_trigger": "mild_discomfort"
+      },
+      {
+         "id": "L2_09",
+         "text": "How do you usually prepare for something important?",
+         "robot_action": "attentive",
+         "emotion_trigger": "planning_mode"
+      },
+      {
+         "id": "L2_10",
+         "text": "What is one habit you want to improve?",
+         "robot_action": "curious_lean",
+         "emotion_trigger": "self_reflection"
+      },
+      {
+         "id": "L2_11",
+         "text": "Do you decide with your head or your heart?",
+         "robot_action": "eyebrow_up",
+         "emotion_trigger": "value_conflict"
+      },
+      {
+         "id": "L2_12",
+         "text": "How do you react when something unexpected happens?",
+         "robot_action": "light_surprise",
+         "emotion_trigger": "uncertainty"
+      }
+   ],
+   "L3": [
+      {
+         "id": "L3_01",
+         "text": "How do you usually handle stress?",
+         "robot_action": "serious_nod",
+         "emotion_trigger": "deep_thinking"
+      },
+      {
+         "id": "L3_02",
+         "text": "How do you adapt when plans change suddenly?",
+         "robot_action": "calm_pose",
+         "emotion_trigger": "focused"
+      },
+      {
+         "id": "L3_03",
+         "text": "What is one decision you made recently that was difficult?",
+         "robot_action": "slow_nod",
+         "emotion_trigger": "deep_reflection"
+      },
+      {
+         "id": "L3_04",
+         "text": "What do you consider your greatest strength?",
+         "robot_action": "smile_proud",
+         "emotion_trigger": "confidence"
+      },
+      {
+         "id": "L3_05",
+         "text": "Do you prefer stability or taking risks?",
+         "robot_action": "thoughtful_eyebrow",
+         "emotion_trigger": "internal_conflict"
+      },
+      {
+         "id": "L3_06",
+         "text": "What is something you want to improve about yourself this year?",
+         "robot_action": "warm_nod",
+         "emotion_trigger": "hopeful"
+      },
+      {
+         "id": "L3_07",
+         "text": "How do you handle disagreements with others?",
+         "robot_action": "serious_listen",
+         "emotion_trigger": "mature_reflection"
+      },
+      {
+         "id": "L3_08",
+         "text": "What helps you stay calm during stressful moments?",
+         "robot_action": "slow_blink",
+         "emotion_trigger": "soothing"
+      },
+      {
+         "id": "L3_09",
+         "text": "What is a long-term goal you're working toward?",
+         "robot_action": "encouraging_smile",
+         "emotion_trigger": "future_focus"
+      },
+      {
+         "id": "L3_10",
+         "text": "How do you decide between two good options?",
+         "robot_action": "thinking_pose",
+         "emotion_trigger": "value_analysis"
+      },
+      {
+         "id": "L3_11",
+         "text": "What personal challenge are you currently facing?",
+         "robot_action": "empathetic_pose",
+         "emotion_trigger": "gentle_emotion"
+      },
+      {
+         "id": "L3_12",
+         "text": "What does success mean to you?",
+         "robot_action": "soft_smile",
+         "emotion_trigger": "core_reflection"
+      }
+   ]
+}
