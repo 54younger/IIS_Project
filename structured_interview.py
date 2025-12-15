@@ -113,25 +113,28 @@ class EmotionAggregator:
                 for emo in emotion_scores:
                     emotion_scores[emo] /= total_weight
 
-            # Apply same balancing as per-frame detection
-            # Neutral was overrepresented in training (41%), so penalize it
-            emotion_scores["Neutral"] *= 0.50
+            # DEBUG: Print weighted average scores
+            print(f"\n[AGGREGATION DEBUG] Predictions in window: {len(self.predictions)}")
+            print(f"[AGGREGATION DEBUG] Weighted average scores: {dict((k, f'{v:.3f}') for k, v in emotion_scores.items())}")
 
-            # Renormalize (this automatically gives more room to other emotions)
-            total_score = sum(emotion_scores.values())
-            if total_score > 0:
-                for emo in emotion_scores:
-                    emotion_scores[emo] /= total_score
+            # Neutral is the baseline - we care about detecting deviations
+            # Pick the highest non-neutral emotion for behavior/difficulty decisions
+            non_neutral_scores = {k: v for k, v in emotion_scores.items() if k != "Neutral"}
+            best_non_neutral = max(non_neutral_scores.items(), key=lambda x: x[1])
 
-            # Only allow Neutral if it's REALLY dominant (>60%)
-            if emotion_scores["Neutral"] < 0.60 and emotion_scores["Neutral"] == max(emotion_scores.values()):
-                # Neutral won but wasn't dominant, pick second best
-                temp_scores = emotion_scores.copy()
-                temp_scores["Neutral"] = 0
-                best_emotion = max(temp_scores.items(), key=lambda x: x[1])
+            # Only report Neutral if:
+            # 1. ALL non-neutral emotions are very low (< 0.10), OR
+            # 2. Neutral is very dominant (> 0.70)
+            all_non_neutral_low = all(v < 0.10 for v in non_neutral_scores.values())
+            neutral_very_high = emotion_scores["Neutral"] > 0.70
+
+            if all_non_neutral_low or neutral_very_high:
+                best_emotion = ("Neutral", emotion_scores["Neutral"])
+                print(f"[AGGREGATION DEBUG] Truly neutral (non-neutral all <0.10 or Neutral >0.70): {best_emotion[1]:.3f}")
             else:
-                # Get most confident emotion normally
-                best_emotion = max(emotion_scores.items(), key=lambda x: x[1])
+                # Use the strongest non-neutral signal for behavior adaptation
+                best_emotion = best_non_neutral
+                print(f"[AGGREGATION DEBUG] Primary non-neutral emotion: {best_emotion[0]} ({best_emotion[1]:.3f})")
 
             return {
                 "emotion": best_emotion[0],
@@ -139,9 +142,15 @@ class EmotionAggregator:
                 "distribution": emotion_scores
             }
 
-    def get_top_k_emotions(self, k=3):
-        """Get top k emotions with their confidence scores."""
-        aggregated = self.get_aggregated_emotion()
+    def get_top_k_emotions(self, k=3, aggregated=None):
+        """Get top k emotions with their confidence scores.
+
+        Args:
+            k: Number of top emotions to return
+            aggregated: Optional pre-computed aggregation result to avoid duplicate computation
+        """
+        if aggregated is None:
+            aggregated = self.get_aggregated_emotion()
 
         if not aggregated.get("distribution"):
             return [("Neutral", 1.0)]
@@ -192,13 +201,11 @@ def load_custom_emotion_model():
         config_path = os.path.join(model_dir, 'dino_model_config.txt')
         with open(config_path, 'r') as f:
             dino_model_name = f.read().strip()
-        print(f"DINO model: {dino_model_name}")
 
         # Load class names
         classes_path = os.path.join(model_dir, 'class_names.txt')
         with open(classes_path, 'r') as f:
             class_names = [line.strip() for line in f.readlines()]
-        print(f"Classes: {class_names}")
 
         # Load DINO model and processor
         processor = AutoImageProcessor.from_pretrained(dino_model_name)
@@ -206,12 +213,10 @@ def load_custom_emotion_model():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         dino_model.to(device)
         dino_model.eval()
-        print(f"DINO model loaded on {device}")
 
         return svm_model, dino_model, processor, device, class_names
     except FileNotFoundError as e:
         print(f"ERROR: Model files not found - {e}")
-        print("Please run the notebook to train and save the model first.")
         print(f"Required files in '{model_dir}/':")
         print("  - best_svm_model.pkl")
         print("  - dino_model_config.txt")
@@ -240,21 +245,20 @@ def cv2_vid_with_emotion():
 
     cam = cv2.VideoCapture(0)
 
-    # Check if camera opened successfully
     if not cam.isOpened():
         print("ERROR: Failed to open camera")
         return
 
     cam.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-    # Give camera time to initialize
+    # Give camera time to stabilize
     import time
-    time.sleep(0.5)
+    time.sleep(1.0)
 
     frame_count = 0
     PROCESS_EVERY = 3  # Process every 3rd frame for efficiency
 
-    print("Starting emotion detection with DINO+SVM...")
+    print("Starting emotion detection with DINO+SVM")
 
     while True:
         ok, frame = cam.read()
@@ -290,28 +294,13 @@ def cv2_vid_with_emotion():
                         probs = np.zeros(len(class_names))
                         probs[pred_idx] = 1.0
 
-                    # Apply class balancing - Neutral was overrepresented in training (41%)
-                    neutral_idx = class_names.index("Neutral")
-                    adjusted_probs = probs.copy()
-                    adjusted_probs[neutral_idx] *= 0.50  # Penalize Neutral by 50%
+                    # Get predicted emotion (raw, no penalty - handled in aggregation)
+                    pred_idx = np.argmax(probs)
 
-                    # Renormalize (this automatically gives more room to other emotions)
-                    adjusted_probs /= adjusted_probs.sum()
+                    # DEBUG: Print EVERY frame's raw prediction
+                    print(f"[FRAME {frame_count}] Raw probs: {dict(zip(class_names, [f'{p:.3f}' for p in probs]))} → {class_names[pred_idx]}")
 
-                    # Only predict Neutral if it's REALLY dominant (>60% after adjustment)
-                    if adjusted_probs[neutral_idx] < 0.60 and adjusted_probs[neutral_idx] == adjusted_probs.max():
-                        # If Neutral won but wasn't dominant, pick second best
-                        adjusted_probs[neutral_idx] = 0
-                        pred_idx = np.argmax(adjusted_probs)
-                    else:
-                        pred_idx = np.argmax(adjusted_probs)
-
-                    # DEBUG: Print predictions every 30 frames
-                    if frame_count % 90 == 0:
-                        print(f"[DEBUG] Frame {frame_count}: Predicted {class_names[pred_idx]} (idx={pred_idx}, conf={probs[pred_idx]:.2f})")
-                        print(f"[DEBUG] Probs: {dict(zip(class_names, probs))}")
-
-                    # Add prediction to aggregator
+                    # Add RAW prediction to aggregator (penalty applied in aggregation only)
                     emotion_aggregator.add_prediction(
                         emotion=class_names[pred_idx],
                         confidence=float(probs[pred_idx]),
@@ -400,7 +389,7 @@ class InterviewCoach:
         if self.client:
             from google.genai import types
             self.chat = self.client.chats.create(
-                model="gemini-1.5-flash",  # Using 1.5-flash (higher free tier: 1500 req/day vs 20 req/day for 2.5-flash)
+                model="gemini-2.5-flash",
                 config=types.GenerateContentConfig(
                     system_instruction=(
                         "You are Furhat, an empathetic interview practice coach. "
@@ -451,8 +440,8 @@ class InterviewCoach:
             emotion = emotion_map.get(emotion_str, Emotion.NEUTRAL)
             confidence = aggregated_result["confidence"]
 
-            # Get top-3 emotions for context (already interview emotions from DINO+SVM)
-            top_3_raw = emotion_aggregator.get_top_k_emotions(k=3)
+            # Get top-3 emotions for context (pass aggregated_result to avoid duplicate computation)
+            top_3_raw = emotion_aggregator.get_top_k_emotions(k=3, aggregated=aggregated_result)
 
             # Convert to Enum tuples
             top_3_interview = []
@@ -740,75 +729,58 @@ Just provide the feedback text, nothing else."""
     # IMPROVED QUESTION SELECTION 
     def calculate_performance_score(self):
         """
-        Calculate performance score from recent answers (last 2) to determine appropriate difficulty.
-        This helps users practice at the right level based on their current emotional state and delivery.
+        Calculate performance score from the last answer to determine appropriate difficulty.
+        Uses a simple scale centered around 0:
+        - Positive = doing well → harder questions
+        - Negative = needs support → easier questions
 
-        Returns: score from 0-100 (higher = better recent performance)
+        Returns: score from -2 to +2
         """
         # First question: always start easy
         if not self.emotion_history or not self.speech_quality_history:
-            return 15  # Easy level
+            return -1  # Start with easy
 
-        # Look at last 2 answers (or fewer if we don't have 2 yet)
-        recent_emotions = self.emotion_history[-2:]
-        recent_speech = self.speech_quality_history[-2:]
+        # Get the most recent answer only
+        last_emotion = self.emotion_history[-1]
+        last_speech = self.speech_quality_history[-1]
 
-        scores = []
+        # Emotion scores: Confident=+1, Neutral=0, Defensive=-0.5, Nervous=-1
+        emotion_scores = {
+            Emotion.CONFIDENT: 1,
+            Emotion.NEUTRAL: 0,
+            Emotion.DEFENSIVE: -0.5,
+            Emotion.NERVOUS: -1
+        }
 
-        # Calculate score for each recent answer
-        for i in range(len(recent_emotions)):
-            emotion = recent_emotions[i]
-            speech = recent_speech[i] if i < len(recent_speech) else SpeechQuality.CLEAR
+        # Speech scores: Fluent=+1, Clear=0, Hesitant=-1
+        speech_scores = {
+            SpeechQuality.FLUENT: 1,
+            SpeechQuality.CLEAR: 0,
+            SpeechQuality.HESITANT: -1
+        }
 
-            # Emotion score (0-40 points)
-            emotion_score = 0
-            if emotion == Emotion.CONFIDENT:
-                emotion_score = 40
-            elif emotion == Emotion.NEUTRAL:
-                emotion_score = 25
-            elif emotion == Emotion.DEFENSIVE:
-                emotion_score = 15
-            elif emotion == Emotion.NERVOUS:
-                emotion_score = 10
+        emotion_score = emotion_scores.get(last_emotion, 0)
+        speech_score = speech_scores.get(last_speech, 0)
 
-            # Speech quality score (0-40 points)
-            speech_score = 0
-            if speech == SpeechQuality.FLUENT:
-                speech_score = 40
-            elif speech == SpeechQuality.CLEAR:
-                speech_score = 25
-            elif speech == SpeechQuality.HESITANT:
-                speech_score = 10
-
-            # Combined score for this answer (max 80)
-            answer_score = emotion_score + speech_score
-            scores.append(answer_score)
-
-        # Average the recent scores
-        avg_score = sum(scores) / len(scores)
-
-        # Normalize to 0-100 scale
-        normalized_score = (avg_score / 80) * 100
-
-        return normalized_score
+        # Combined score (range: -2 to +2)
+        return emotion_score + speech_score
 
     def select_question_difficulty(self):
         """
-        Select difficulty based on recent performance to support user growth.
-        Uses last 2 answers to be responsive without being jumpy.
+        Select difficulty based on the last answer to be responsive to current state.
+
+        Score range: -2 to +2
+        - Negative = struggling → easy questions
+        - Around 0 = baseline → medium questions
+        - Positive = doing well → hard questions
         """
         # Calculate performance from recent answers
         performance = self.calculate_performance_score()
 
         # Map performance to difficulty
-        # Thresholds designed to be supportive:
-        # - 0-35: easy (nervous or hesitant delivery)
-        # - 35-65: medium (neutral/clear or mixed performance)
-        # - 65-100: hard (confident and fluent)
-
-        if performance < 35:
+        if performance < -0.5:
             difficulty = "easy"
-        elif performance < 65:
+        elif performance <= 0.5:
             difficulty = "medium"
         else:
             difficulty = "hard"
@@ -949,10 +921,11 @@ Just provide the feedback text, nothing else."""
         self.speech_quality_history.append(speech_quality)
         self.delivery_metrics_history.append(metrics)
 
+        print("USER'S RESPONSE ANALYSIS")
         print(f"Detected emotion: {emotion.value} (confidence: {confidence:.2f})")
         print(f"Top-3 emotions: {[(e.value, f'{s:.2f}') for e, s in top_3_emotions]}")
-        print(f"Speech quality: {speech_quality.value}")
         print(f"Metrics: {metrics['word_count']} words, {metrics['filler_ratio']:.2%} fillers, {metrics['wpm']:.0f} WPM")
+        print(f"Speech quality: {speech_quality.value}")
 
         # Give feedback based on detected emotion and delivery quality
         feedback = self.get_llm_feedback(user_answer, emotion, question, speech_quality, top_3_emotions)
