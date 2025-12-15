@@ -1,0 +1,4 @@
+Confident
+Nervous
+Neutral
+Defensive
