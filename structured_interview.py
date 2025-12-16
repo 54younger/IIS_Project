@@ -57,6 +57,7 @@ from google import genai
 # EMOTION AGGREGATION SYSTEM
 import time
 import json
+import random
 from enum import Enum
 from collections import deque
 
@@ -465,7 +466,7 @@ class InterviewCoach:
                 print(f"Using neutral as fallback")
                 return Emotion.NEUTRAL, 0.5, [(Emotion.NEUTRAL, 0.5)]
 
-    # DELIVERY QUALITY ANALYSIS
+    # SPEECH QUALITY ANALYSIS
     def analyze_filler_words(self, user_answer):
         """
         Analyze filler word ratio in the response.
@@ -578,6 +579,7 @@ class InterviewCoach:
         }
 
         return speech_quality, metrics
+    
     # SAFETY & VALIDATION
     def pre_filter_user_answer(self, user_answer):
         """
@@ -599,67 +601,78 @@ class InterviewCoach:
         lower_answer = user_answer.lower()
         for phrase in banned_phrases:
             if phrase in lower_answer:
-                return False, "Please focus on answering the interview question naturally."
+                return False, "I'm here only to help with interview practice. Let's try again."
 
         return True, None
 
     # LLM INTEGRATION
-    def get_llm_feedback(self, user_answer, emotion, question_asked, speech_quality=None, top_3_emotions=None):
-        """Generate feedback using Gemini API with fallback to rule-based responses."""
-        if not self.chat:
-            return self._get_fallback_feedback(emotion)
+   def get_llm_feedback(self, user_answer, emotion, question_asked, speech_quality=None, top_3_emotions=None):
+       """Generate feedback using Gemini API with fallback to rule-based responses."""
+       if not self.chat:
+           return self._get_fallback_feedback(emotion)
 
-        try:
-            # Build emotion-specific strategy
-            emotion_strategies = {
-                Emotion.NERVOUS: "Be very reassuring. Use phrases like 'That's a good start' or 'I understand'. Normalize nervousness.",
-                Emotion.CONFIDENT: "Be professional and brief. Acknowledge competence. Keep it to 1-2 sentences.",
-                Emotion.NEUTRAL: "Be balanced. Provide constructive feedback.",
-                Emotion.DEFENSIVE: "Be gentle and non-judgmental. Avoid words like 'wrong' or 'mistake'. Validate their perspective."
-            }
 
-            # Build conversation history context
-            recent_history = self.conversation_history[-3:] if len(self.conversation_history) > 0 else []
-            history_text = "\n".join([f"- {h}" for h in recent_history])
+       try:
+           # Build emotion-specific strategy
+           emotion_strategies = {
+               Emotion.NERVOUS: "Be very reassuring. Use phrases like 'That's a good start' or 'I understand'. Normalize nervousness.",
+               Emotion.CONFIDENT: "Be professional and brief. Acknowledge competence. Keep it to 1-2 sentences.",
+               Emotion.NEUTRAL: "Be balanced. Provide constructive feedback.",
+               Emotion.DEFENSIVE: "Be gentle and non-judgmental. Avoid words like 'wrong' or 'mistake'. Validate their perspective."
+           }
 
-            # Build emotion distribution context
-            emotion_context = f"- Primary emotion: {emotion.value}"
-            if top_3_emotions and len(top_3_emotions) > 1:
-                distribution_str = ", ".join([f"{e.value} ({s:.0%})" for e, s in top_3_emotions[:3]])
-                emotion_context += f"\n- Emotion distribution during answer: {distribution_str}"
 
-                if top_3_emotions[0][1] > 0.6:
-                    emotion_context += f"\n- Note: Candidate was predominantly {top_3_emotions[0][0].value} throughout the answer."
-                elif len(top_3_emotions) >= 2 and top_3_emotions[1][1] > 0.25:
-                    emotion_context += f"\n- Note: Mixed emotions detected - candidate showed {top_3_emotions[0][0].value} and {top_3_emotions[1][0].value}."
+           # Build conversation history context
+           recent_history = self.conversation_history[-3:] if len(self.conversation_history) > 0 else []
+           history_text = "\n".join([f"- {h}" for h in recent_history])
 
-            # Build delivery quality context
-            delivery_context = ""
-            if speech_quality:
-                delivery_context = f"""
+
+           # Build emotion distribution context
+           emotion_context = f"- Primary emotion: {emotion.value}"
+           if top_3_emotions and len(top_3_emotions) > 1:
+               distribution_str = ", ".join([f"{e.value} ({s:.0%})" for e, s in top_3_emotions[:3]])
+               emotion_context += f"\n- Emotion distribution during answer: {distribution_str}"
+
+
+               if top_3_emotions[0][1] > 0.6:
+                   emotion_context += f"\n- Note: Candidate was predominantly {top_3_emotions[0][0].value} throughout the answer."
+               elif len(top_3_emotions) >= 2 and top_3_emotions[1][1] > 0.25:
+                   emotion_context += f"\n- Note: Mixed emotions detected - candidate showed {top_3_emotions[0][0].value} and {top_3_emotions[1][0].value}."
+
+
+           # Build delivery quality context
+           delivery_context = ""
+           if speech_quality:
+               delivery_context = f"""
 DELIVERY QUALITY ANALYSIS:
 - Speech fluency: {speech_quality.value}"""
 
-                if speech_quality == SpeechQuality.HESITANT:
-                    delivery_context += "\n- Note: If hesitant, gently encourage speaking more confidently without mentioning filler words directly."
-                elif speech_quality == SpeechQuality.FLUENT:
-                    delivery_context += "\n- Note: Excellent delivery - acknowledge this briefly."
 
-            # Build complete prompt
-            prompt = f"""MULTI-MODAL CONTEXT:
+               if speech_quality == SpeechQuality.HESITANT:
+                   delivery_context += "\n- Note: If hesitant, gently encourage speaking more confidently without mentioning filler words directly."
+               elif speech_quality == SpeechQuality.FLUENT:
+                   delivery_context += "\n- Note: Excellent delivery - acknowledge this briefly."
+
+
+           # Build complete prompt
+           prompt = f"""MULTI-MODAL CONTEXT:
 {emotion_context}
 - Questions asked so far: {self.questions_asked}
 - Current phase: {self.current_phase}{delivery_context}
 
+
 CONVERSATION HISTORY:
 {history_text if history_text else "This is early in the conversation"}
+
 
 CURRENT SITUATION:
 Question asked: "{question_asked}"
 User's answer: "{user_answer}"
 
+
 STRATEGY FOR {emotion.value.upper()}:
 {emotion_strategies[emotion]}
+
 
 TASK:
 Provide brief, empathetic feedback (max 40 words, 2-3 sentences).
@@ -667,24 +680,29 @@ Provide brief, empathetic feedback (max 40 words, 2-3 sentences).
 - Use the emotion distribution to acknowledge emotional journey if relevant (e.g., "I can see you were a bit nervous but pushed through")
 - Be supportive and help build confidence
 
+
 Just provide the feedback text, nothing else."""
 
-            # Call LLM
-            response = self.chat.send_message(prompt)
-            feedback = response.text.strip()
 
-            # Validate response
-            if not self._validate_llm_response(feedback):
-                print("LLM response validation failed, using fallback")
-                return self._get_fallback_feedback(emotion)
+           # Call LLM
+           response = self.chat.send_message(prompt)
+           feedback = response.text.strip()
 
-            self.llm_failures = 0  # Reset on success
-            return feedback
 
-        except Exception as e:
-            print(f"LLM Error: {e}")
-            self.llm_failures += 1
-            return self._get_fallback_feedback(emotion)
+           # Validate response
+           if not self._validate_llm_response(feedback):
+               print("LLM response validation failed, using fallback")
+               return self._get_fallback_feedback(emotion)
+
+
+           self.llm_failures = 0  # Reset on success
+           return feedback
+
+
+       except Exception as e:
+           print(f"LLM Error: {e}")
+           self.llm_failures += 1
+           return self._get_fallback_feedback(emotion)
 
     def _validate_llm_response(self, response):
         """Validate LLM response is appropriate"""
@@ -726,7 +744,7 @@ Just provide the feedback text, nothing else."""
         elif emotion == Emotion.NEUTRAL:
             self.furhat.gesture(name="Nod")  # TODO: FURHAT BEHAVIOR - Neutral gesture
 
-    # IMPROVED QUESTION SELECTION 
+    # QUESTION SELECTION 
     def calculate_performance_score(self):
         """
         Calculate performance score from the last answer to determine appropriate difficulty.
@@ -821,37 +839,79 @@ Just provide the feedback text, nothing else."""
 
         return question
 
-    # PHASE METHODS
+    # PHASES
     def introduction(self):
         """Phase 1: Introduction"""
         print("\nPHASE: INTRODUCTION")
         self.current_phase = "introduction"
 
-        # TODO: FURHAT BEHAVIOR - Welcome gesture
-        self.furhat.gesture(name="Smile")
-        # TODO: FURHAT BEHAVIOR - Greeting speech (consider voice parameters: rate, pitch)
-        self.furhat.say(text="Hello! Welcome to Interview Practice Coach.", blocking=True)
+        # Attend to user before starting
+        self.furhat.attend(user="CLOSEST")
+        self.furhat.gesture(name="BigSmile")
+        self.furhat.say(
+            text="Hello! I'm Furhat, and I'm here to help you practice for your upcoming interviews.",
+            blocking=True
+        )
         time.sleep(0.5)
-        # TODO: FURHAT BEHAVIOR - Introduction speech
-        self.furhat.say(text="I'm Furhat, and I'm here to help you practice for your upcoming interviews.", blocking=True)
-        time.sleep(0.5)
-        # TODO: FURHAT BEHAVIOR - Question speech
-        self.furhat.say(text="What's your name?", blocking=True)
 
-        # TODO: FURHAT BEHAVIOR - Listen for user name
+        self.furhat.gesture(name="Smile")
+        self.furhat.say(
+            text="I will ask you a few questions. There are no right or wrong answers.",
+            blocking=True
+        )
+        time.sleep(0.5)
+        
+        self.furhat.gesture(name="BrowRaise")
+        self.furhat.say(text="What's your name?", blocking=True)
+        # Listen for user name (with retry)
         response = self.furhat.listen()
         if response and response.message:
             self.user_name = response.message.strip().split()[0].capitalize()
-            # TODO: FURHAT BEHAVIOR - Personalized greeting
+            self.furhat.gesture(name="Nod")  # Acknowledge hearing them
+            time.sleep(0.2)
+            self.furhat.gesture(name="BigSmile")
             self.furhat.say(text=f"Nice to meet you, {self.user_name}!", blocking=True)
         else:
-            self.user_name = "there"
+            # FALLBACK: Didn't hear name - try once more
+            self.furhat.gesture(name="BrowFrown")
+            self.furhat.say(text="Sorry, I didn't catch that. Could you say your name again?", blocking=True)
+            response = self.furhat.listen()
 
-        time.sleep(0.5)
-        # TODO: FURHAT BEHAVIOR - Ready check speech
+            if response and response.message:
+                self.user_name = response.message.strip().split()[0].capitalize()
+                self.furhat.gesture(name="Nod")
+                time.sleep(0.2)
+                self.furhat.gesture(name="BigSmile")
+                self.furhat.say(text=f"Nice to meet you, {self.user_name}!", blocking=True)
+            else:
+                # FALLBACK: Still didn't hear - move on
+                self.user_name = "there"
+                self.furhat.gesture(name="Smile")
+                self.furhat.say(text="No worries! Let's continue.", blocking=True)
+
+        time.sleep(0.3)
+
+        # Ready check
+        self.furhat.gesture(name="BrowRaise")
         self.furhat.say(text="Are you ready to begin?", blocking=True)
-        # TODO: FURHAT BEHAVIOR - Listen for confirmation
-        self.furhat.listen()
+
+        # Listen for confirmation
+        response = self.furhat.listen()
+
+        if response and response.message:
+            answer = response.message.lower()
+
+            # Check for "no" responses - STOP THE INTERVIEW
+            if any(word in answer for word in ["no", "not", "wait", "stop", "cancel", "quit"]):
+                self.furhat.gesture(name="Nod")
+                self.furhat.say(text="No problem. Come back whenever you're ready. Goodbye!", blocking=True)
+                self.furhat.gesture(name="Smile")
+                return False  # Exit introduction, don't continue
+
+        # User is ready - proceed
+        self.furhat.gesture(name="Nod")
+        self.furhat.say(text="Great!", blocking=True)
+        return True  # Continue to warmup
 
     def warmup_phase(self):
         """Phase 2: Warmup"""
@@ -861,10 +921,13 @@ Just provide the feedback text, nothing else."""
         question = self.get_next_question("easy")
         self.questions_asked += 1
 
-        # TODO: FURHAT BEHAVIOR - Warmup introduction speech
+        self.furhat.attend(user="CLOSEST")
+        self.furhat.gesture(name="Smile")
         self.furhat.say(text="Let's start with a simple question.", blocking=True)
-        time.sleep(0.5)
-        # TODO: FURHAT BEHAVIOR - Ask first question
+        time.sleep(0.3)
+
+        # Ask the question with raised brows
+        self.furhat.gesture(name="BrowRaise")
         self.furhat.say(text=question, blocking=True)
 
         # Clear emotion buffer to collect emotions during answer
@@ -872,7 +935,6 @@ Just provide the feedback text, nothing else."""
 
         # Listen to answer (emotions are collected during this time)
         start_time = time.time()
-        # TODO: FURHAT BEHAVIOR - Listen for answer
         response = self.furhat.listen()
         end_time = time.time()
         duration = end_time - start_time
@@ -881,11 +943,11 @@ Just provide the feedback text, nothing else."""
 
         # Handle case when Furhat doesn't catch the answer
         if user_answer == "No response":
-            # TODO: FURHAT BEHAVIOR - Polite retry speech
+            self.furhat.gesture(name="BrowFrown")
             self.furhat.say(text="I didn't catch that. Could you please try again?", blocking=True)
             # Give them another chance
             start_time = time.time()
-            # TODO: FURHAT BEHAVIOR - Listen again
+            
             response = self.furhat.listen()
             end_time = time.time()
             duration = end_time - start_time
@@ -893,16 +955,32 @@ Just provide the feedback text, nothing else."""
 
             # If still no response, acknowledge and move on
             if user_answer == "No response":
-                # TODO: FURHAT BEHAVIOR - Reassuring speech
+                self.furhat.gesture(name="Smile")
                 self.furhat.say(text="That's okay. Take your time. Let's continue.", blocking=True)
 
         # Pre-filter user answer for safety (jailbreak detection)
         is_safe, warning = self.pre_filter_user_answer(user_answer)
         if not is_safe:
             print(f"Safety warning: Blocked potentially harmful input")
-            # TODO: FURHAT BEHAVIOR - Safety warning speech
+            self.furhat.gesture(name="Nod")
             self.furhat.say(text=warning, blocking=True)
-            return  # Skip processing this answer
+            time.sleep(0.3)
+            # Re-ask the question
+            self.furhat.gesture(name="BrowRaise")
+            self.furhat.say(text=question, blocking=True)
+            response = self.furhat.listen()
+            user_answer = response.message if response and response.message else "No response"
+            # If still not safe, just move on
+            is_safe, _ = self.pre_filter_user_answer(user_answer)
+            if not is_safe:
+                self.furhat.gesture(name="Smile")
+                self.furhat.say(text="Let's move on.", blocking=True)
+                return
+
+        # Acknowledge that we heard them before processing
+        self.furhat.gesture(name="CloseEyes", blocking=False)
+        time.sleep(0.3)
+        self.furhat.gesture(name="Nod")
 
         # Detect emotion from the answer
         emotion, confidence, top_3_emotions = self.detect_emotion()
@@ -930,9 +1008,11 @@ Just provide the feedback text, nothing else."""
         # Give feedback based on detected emotion and delivery quality
         feedback = self.get_llm_feedback(user_answer, emotion, question, speech_quality, top_3_emotions)
 
-        # TODO: FURHAT BEHAVIOR - Emotion-adaptive gesture before feedback
+        # Return attention to user before feedback
+        self.furhat.attend(user="CLOSEST")
+        time.sleep(0.2)
+
         self.adjust_behavior_for_emotion(emotion)
-        # TODO: FURHAT BEHAVIOR - Deliver personalized feedback (consider voice parameters based on emotion)
         self.furhat.say(text=feedback, blocking=True)
 
         # Update history
@@ -941,7 +1021,7 @@ Just provide the feedback text, nothing else."""
         self.conversation_history.append(f"Emotion: {emotion.value}, Speech: {speech_quality.value}")
 
     def main_interview(self):
-        """Phase 3: Main interview with dynamic state handling"""
+        """Phase 3: Main interview"""
         print("\nPHASE: MAIN INTERVIEW")
         self.current_phase = "main"
 
@@ -957,13 +1037,31 @@ Just provide the feedback text, nothing else."""
             question = self.get_next_question(difficulty)
             self.questions_asked += 1
 
-            print(f"Asking {difficulty} question")
+            # Intro phrase before question (varied for each turn)
+            turn_in_main = self.questions_asked - 1
 
-            # TODO: FURHAT BEHAVIOR - Adjust gesture based on previous emotion
-            if self.emotion_history:
-                self.adjust_behavior_for_emotion(self.current_emotion)
+            if turn_in_main == 0 or turn_in_main == 1:
+                intros = [
+                    "Here's the next one.",
+                    "Moving on.",
+                    "Alright, next question.",
+                    "Here's another one.",
+                    f"Okay {self.user_name}, next question.",
+                    "Let's keep going."
+                ]
+            else:  # Last question
+                intros = [
+                    "One more question before we wrap up.",
+                    "Let's finish with this one.",
+                    f"Last one, {self.user_name}."
+                ]
 
-            # TODO: FURHAT BEHAVIOR - Ask adaptive difficulty question
+            intro = random.choice(intros)
+
+            self.furhat.gesture(name="Smile")
+            self.furhat.say(text=intro, blocking=True)
+            time.sleep(0.3)
+            self.furhat.gesture(name="BrowRaise")
             self.furhat.say(text=question, blocking=True)
 
             # Clear emotion buffer to collect emotions during answer
@@ -971,7 +1069,6 @@ Just provide the feedback text, nothing else."""
 
             # Listen to answer (emotions are collected during this time)
             start_time = time.time()
-            # TODO: FURHAT BEHAVIOR - Listen for answer
             response = self.furhat.listen()
             end_time = time.time()
             duration = end_time - start_time
@@ -980,11 +1077,10 @@ Just provide the feedback text, nothing else."""
 
             # Handle case when Furhat doesn't catch the answer
             if user_answer == "No response":
-                # TODO: FURHAT BEHAVIOR - Polite retry speech
+                self.furhat.gesture(name="BrowFrown")
                 self.furhat.say(text="I didn't catch that. Could you please try again?", blocking=True)
                 # Give them another chance
                 start_time = time.time()
-                # TODO: FURHAT BEHAVIOR - Listen again
                 response = self.furhat.listen()
                 end_time = time.time()
                 duration = end_time - start_time
@@ -992,18 +1088,34 @@ Just provide the feedback text, nothing else."""
 
                 # If still no response, acknowledge and move on
                 if user_answer == "No response":
-                    # TODO: FURHAT BEHAVIOR - Reassuring speech
+                    self.furhat.gesture(name="Smile")
                     self.furhat.say(text="That's okay. Take your time. Let's continue.", blocking=True)
 
             # Pre-filter user answer for safety (jailbreak detection)
             is_safe, warning = self.pre_filter_user_answer(user_answer)
             if not is_safe:
                 print(f"Safety warning: Blocked potentially harmful input")
-                # TODO: FURHAT BEHAVIOR - Safety warning speech
+                self.furhat.gesture(name="Nod")
                 self.furhat.say(text=warning, blocking=True)
-                continue  # Skip processing this answer and move to next question
+                time.sleep(0.3)
+                # Re-ask the question
+                self.furhat.gesture(name="BrowRaise")
+                self.furhat.say(text=question, blocking=True)
+                response = self.furhat.listen()
+                user_answer = response.message if response and response.message else "No response"
+                # If still not safe, just move on
+                is_safe, _ = self.pre_filter_user_answer(user_answer)
+                if not is_safe:
+                    self.furhat.gesture(name="Smile")
+                    self.furhat.say(text="Let's move on.", blocking=True)
+                    continue
 
-            # NOW detect emotion from the answer
+            # Acknowledge that we heard them before processing
+            #self.furhat.gesture(name="CloseEyes", blocking=False)
+            #time.sleep(0.3)
+            #self.furhat.gesture(name="Nod")
+
+            # Detect emotion from the answer
             emotion, confidence, top_3_emotions = self.detect_emotion()
             self.current_emotion = emotion
             self.emotion_history.append(emotion)
@@ -1028,9 +1140,12 @@ Just provide the feedback text, nothing else."""
             # Get LLM feedback based on the detected emotion and delivery quality
             feedback = self.get_llm_feedback(user_answer, emotion, question, speech_quality, top_3_emotions)
 
-            # TODO: FURHAT BEHAVIOR - Emotion-adaptive gesture before feedback
+            # Return attention to user before feedback
+            self.furhat.attend(user="CLOSEST")
+            time.sleep(0.2)
+
+            # Emotion-adaptive gesture before feedback
             self.adjust_behavior_for_emotion(emotion)
-            # TODO: FURHAT BEHAVIOR - Deliver personalized feedback (consider voice parameters based on emotion)
             self.furhat.say(text=feedback, blocking=True)
 
             # Update conversation history
@@ -1038,47 +1153,76 @@ Just provide the feedback text, nothing else."""
             self.conversation_history.append(f"A: {user_answer[:50]}...")
             self.conversation_history.append(f"Emotion: {emotion.value}, Speech: {speech_quality.value}")
 
-    def closing_summary(self):
+    def closing_phase(self):
         """Phase 4: Closing"""
         print("\nPHASE: CLOSING")
         self.current_phase = "closing"
 
-        # TODO: FURHAT BEHAVIOR - Positive closing gesture
-        self.furhat.gesture(name="Smile")
-        # TODO: FURHAT BEHAVIOR - Closing speech (consider warm, encouraging tone)
-        self.furhat.say(text="Great job today! Let me give you some feedback.", blocking=True)
+        self.furhat.attend(user="CLOSEST")
+        self.furhat.gesture(name="BigSmile")
+        self.furhat.say(text="That's all the questions I have for you today.", blocking=True)
         time.sleep(0.5)
 
-        summary = self.generate_emotional_summary()
-        # TODO: FURHAT BEHAVIOR - Deliver emotional summary
-        self.furhat.say(text=summary, blocking=True)
-        time.sleep(1.0)
+        self.furhat.say(text="Let me give you some feedback.", blocking=True)
+        time.sleep(0.3)
 
-        # TODO: FURHAT BEHAVIOR - Encouraging closing message
+        # Get LLM-generated closing feedback
+        feedback = self.get_closing_feedback()
+        self.furhat.gesture(name="Smile")
+        self.furhat.say(text=feedback, blocking=True)
+        time.sleep(0.5)
+
         self.furhat.say(text="Remember, practice makes progress!", blocking=True)
-        # TODO: FURHAT BEHAVIOR - Personalized goodbye
+        time.sleep(0.3)
+
+        self.furhat.gesture(name="BigSmile")
         self.furhat.say(text=f"Good luck, {self.user_name}!", blocking=True)
 
-    def generate_emotional_summary(self):
-        """Generate summary based on emotion trajectory"""
-        total = len(self.emotion_history)
-        if total == 0:
-            return "You did well today."
+    def get_closing_feedback(self):
+        """Generate holistic closing feedback using LLM based on entire session."""
+        fallback = "You did well today. Keep practicing and you'll continue to improve."
 
-        nervous = self.emotion_history.count(Emotion.NERVOUS)
-        confident = self.emotion_history.count(Emotion.CONFIDENT)
+        if not self.chat:
+            return fallback
 
-        nervous_pct = (nervous / total) * 100
-        confident_pct = (confident / total) * 100
+        try:
+            # Build emotion and speech trajectories
+            emotion_trajectory = [e.value for e in self.emotion_history]
+            speech_trajectory = [s.value for s in self.speech_quality_history]
 
-        if nervous_pct > 60:
-            return "I noticed you were nervous, which is normal. With practice, this will get easier."
-        elif confident_pct > 60:
-            return "You showed great confidence! Keep that energy in real interviews."
-        else:
-            return "You showed good composure during our practice. Keep up the confidence!"
-    # SESSION REPORT
-    def generate_session_report(self):
+            # Describe the emotional journey
+            if len(emotion_trajectory) >= 2:
+                first_emotion = emotion_trajectory[0]
+                last_emotion = emotion_trajectory[-1]
+                trajectory_note = f"Started {first_emotion}, ended {last_emotion}."
+            else:
+                trajectory_note = "Single response recorded."
+
+            prompt = f"""SESSION SUMMARY FOR {self.user_name}:
+- Questions answered: {len(self.emotion_history)}
+- Emotion trajectory: {emotion_trajectory}
+- Speech quality trajectory: {speech_trajectory}
+- {trajectory_note}
+
+TASK:
+Give brief, encouraging closing feedback (max 50 words, 2-3 sentences).
+- Comment on their emotional journey if notable (e.g., started nervous but grew confident)
+- Mention speech delivery only if there was a clear pattern (mostly hesitant or mostly fluent)
+- End on a positive, encouraging note
+- Be specific to their performance, not generic
+
+Just provide the feedback text, nothing else."""
+
+            response = self.chat.send_message(prompt)
+            feedback = response.text.strip()
+            return feedback
+
+        except Exception as e:
+            print(f"LLM Error in closing feedback: {e}")
+            return fallback
+
+    # SESSION STATISTICS
+    def session_statistics(self):
         """Generate detailed report for evaluation."""
         print(f"  Total questions: {self.questions_asked}")
         print(f"  Total turns: {len(self.emotion_history)}")
@@ -1124,8 +1268,6 @@ Just provide the feedback text, nothing else."""
                 print(f"    Filler word ratio: {avg_filler_ratio:.1%}")
                 print(f"    Speaking rate: {avg_wpm:.0f} WPM")
 
-        print("="*60 + "\n")
-
         return {
             "questions_asked": self.questions_asked,
             "emotion_trajectory": [e.value for e in self.emotion_history],
@@ -1140,7 +1282,10 @@ Just provide the feedback text, nothing else."""
         """Main flow"""
         try:
             # Phase 1: Introduction
-            self.introduction()
+            if not self.introduction():
+                # User said no - stop here
+                print("User declined. Interview stopped.")
+                return
 
             # Phase 2: Warmup
             self.warmup_phase()
@@ -1149,13 +1294,13 @@ Just provide the feedback text, nothing else."""
             self.main_interview()
 
             # Phase 4: Closing
-            self.closing_summary()
+            self.closing_phase()
 
-            # Generate evaluation report
-            report = self.generate_session_report()
+            # Generate session statistics
+            report = self.session_statistics()
 
-            # Save report for evaluation
-            with open('session_report.json', 'w') as f:
+            # Save statistics
+            with open('session_statistics.json', 'w') as f:
                 json.dump(report, f, indent=2)
 
         except Exception as e:
