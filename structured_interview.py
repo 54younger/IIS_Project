@@ -187,6 +187,287 @@ class SpeechQuality(Enum):
     HESITANT = "hesitant"      # High filler word ratio or irregular pace
     CLEAR = "clear"            # Adequate delivery
 
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
+
+# CUSTOM GESTURE DEFINITIONS
+
+NERVOUS_BEHAVIOR = {
+    "name": "Nervous_behavior",
+    "frames": [
+        {
+            "time": [0.3, 1.2],
+            "persist": False,
+            "params": {
+                "SMILE_CLOSED": 0.7,
+                "EYE_SQUINT_LEFT": 0.25,
+                "EYE_SQUINT_RIGHT": 0.25,
+                "BROW_UP_LEFT": 0.2,
+                "BROW_UP_RIGHT": 0.2
+            }
+        },
+        {
+            "time": [0.5],
+            "persist": False,
+            "params": {"NECK_TILT": 10}
+        },
+        {
+            "time": [0.9],
+            "persist": False,
+            "params": {"NECK_TILT": 5}
+        },
+        {
+            "time": [1.2],
+            "persist": False,
+            "params": {"NECK_PAN": 3}
+        },
+        {
+            "time": [1.8],
+            "persist": False,
+            "params": {"reset": True}
+        }
+    ],
+    "class": "furhatos.gestures.Gesture"
+}
+
+CONFIDENT_BEHAVIOR = {
+    "name": "Confident_behavior",
+    "frames": [
+        {
+            "time": [0.1],
+            "persist": False,
+            "params": {
+                "BROW_UP_LEFT": 1.0,
+                "BROW_UP_RIGHT": 1.0,
+                "SURPRISE": 0.3
+            }
+        },
+        {
+            "time": [0.3, 0.7],
+            "persist": False,
+            "params": {
+                "SMILE_OPEN": 0.6,
+                "SMILE_CLOSED": 0.5
+            }
+        },
+        {
+            "time": [0.4, 0.6],
+            "persist": False,
+            "params": {
+                "NECK_TILT": 6
+            }
+        },
+        {
+            "time": [0.9],
+            "persist": False,
+            "params": {"reset": True}
+        }
+    ],
+    "class": "furhatos.gestures.Gesture"
+}
+
+DEFENSIVE_BEHAVIOR = {
+    "name": "Defensive_behavior",
+    "frames": [
+        {
+            "time": [0.3, 1.2],
+            "persist": False,
+            "params": {
+                "BROW_IN_LEFT": 0.5,
+                "BROW_IN_RIGHT": 0.5,
+                "BROW_UP_LEFT": 0.4,
+                "BROW_UP_RIGHT": 0.4,
+                "EXPR_SAD": 0.15
+            }
+        },
+        {
+            "time": [0.4, 1.3],
+            "persist": False,
+            "params": {
+                "NECK_PAN": -15,
+                "NECK_TILT": 8
+            }
+        },
+        {
+            "time": [0.9, 1.4],
+            "persist": False,
+            "params": {
+                "SMILE_CLOSED": 0.4
+            }
+        },
+        {
+            "time": [1.8],
+            "persist": False,
+            "params": {"reset": True}
+        }
+    ],
+    "class": "furhatos.gestures.Gesture"
+}
+
+NEUTRAL_BEHAVIOR = {
+    "name": "Neutral_behavior",
+    "frames": [
+        {
+            "time": [0.15, 0.6],
+            "persist": False,
+            "params": {
+                "BROW_UP_LEFT": 0.25,
+                "BROW_UP_RIGHT": 0.25
+            }
+        },
+        {
+            "time": [0.3],
+            "persist": False,
+            "params": {"NECK_TILT": 7}
+        },
+        {
+            "time": [0.5],
+            "persist": False,
+            "params": {"NECK_TILT": 2}
+        },
+        {
+            "time": [0.8],
+            "persist": False,
+            "params": {"reset": True}
+        }
+    ],
+    "class": "furhatos.gestures.Gesture"
+}
+
+ATTENTIVE_LISTEN = {
+    "name": "AttentiveListen",
+    "frames": [
+        {
+            "time": [0.15, 0.6],
+            "persist": False,
+            "params": {
+                "BROW_UP_LEFT": 0.25,
+                "BROW_UP_RIGHT": 0.25,
+                "SMILE_CLOSED": 0.3
+            }
+        },
+        {
+            "time": [0.3],
+            "persist": False,
+            "params": {"NECK_TILT": 7}
+        },
+        {
+            "time": [0.5],
+            "persist": False,
+            "params": {"NECK_TILT": 2}
+        },
+        {
+            "time": [0.8],
+            "persist": False,
+            "params": {"reset": True}
+        }
+    ],
+    "class": "furhatos.gestures.Gesture"
+}
+
+ACTIVE_LISTEN = {
+    "name": "ActiveListen",
+    "frames": [
+        {
+            "time": [0.1, 2.0],
+            "persist": False,
+            "params": {
+                "SMILE_CLOSED": 0.25,
+                "BROW_UP_LEFT": 0.2,
+                "BROW_UP_RIGHT": 0.2
+            }
+        },
+        {
+            "time": [0.4],
+            "persist": False,
+            "params": {"NECK_TILT": 5}
+        },
+        {
+            "time": [0.7],
+            "persist": False,
+            "params": {"NECK_TILT": 2}
+        },
+        {
+            "time": [1.1],
+            "persist": False,
+            "params": {"NECK_TILT": 6}
+        },
+        {
+            "time": [1.5],
+            "persist": False,
+            "params": {"NECK_TILT": 2}
+        },
+        {
+            "time": [2.3],
+            "persist": False,
+            "params": {"reset": True}
+        }
+    ],
+    "class": "furhatos.gestures.Gesture"
+}
+
+CUSTOM_SMILE_GESTURE = {
+    "name": "WrapUp",
+    "frames": [
+        {
+            "time": [0.2, 1.0],
+            "persist": False,
+            "params": {
+                "SMILE_OPEN": 0.5,
+                "SMILE_CLOSED": 0.6,
+                "BROW_UP_LEFT": 0.6,
+                "BROW_UP_RIGHT": 0.6
+            }
+        },
+        {
+            "time": [0.4],
+            "persist": False,
+            "params": {"NECK_TILT": 8}
+        },
+        {
+            "time": [0.7],
+            "persist": False,
+            "params": {"NECK_TILT": 3}
+        },
+        {
+            "time": [1.3],
+            "persist": False,
+            "params": {"reset": True}
+        }
+    ],
+    "class": "furhatos.gestures.Gesture"
+}
+
+@dataclass
+class GestureConfig:
+    """Configuration for Furhat gesture - can be a name string or custom dict."""
+    gesture_name: str = None
+    gesture_body: Dict[str, Any] = None
+    blocking: bool = False
+
+class GestureMapper:
+    """Maps (emotion, confidence_score) to appropriate Furhat gesture."""
+
+    def map_gesture(self, emotion: Emotion, confidence_score: Optional[float] = None) -> GestureConfig:
+        """
+        Main mapping function.
+        Args:
+            emotion: The detected emotion
+            confidence_score: Optional confidence score (0.0 to 1.0)
+        Returns:
+            GestureConfig with custom gesture body
+        """
+        if emotion == Emotion.NERVOUS:
+            return GestureConfig(gesture_body=NERVOUS_BEHAVIOR, blocking=False)
+        elif emotion == Emotion.CONFIDENT:
+            return GestureConfig(gesture_body=CONFIDENT_BEHAVIOR, blocking=False)
+        elif emotion == Emotion.DEFENSIVE:
+            return GestureConfig(gesture_body=DEFENSIVE_BEHAVIOR, blocking=False)
+        elif emotion == Emotion.NEUTRAL:
+            return GestureConfig(gesture_body=NEUTRAL_BEHAVIOR, blocking=False)
+
+        return GestureConfig(gesture_body=NEUTRAL_BEHAVIOR, blocking=False)
+
 # LOAD TRAINED DINO+SVM MODEL
 def load_custom_emotion_model():
     """Load the trained DINO+SVM model from saved files"""
@@ -377,6 +658,9 @@ class InterviewCoach:
         self.max_llm_failures = 2
         # Count emotion detection failures
         self.emotion_detection_failures = 0
+
+        # Gesture mapper for emotion-adaptive behaviors
+        self.gesture_mapper = GestureMapper()
 
         # LLM setup 
         self.llm_api_key = api_key
@@ -606,103 +890,103 @@ class InterviewCoach:
         return True, None
 
     # LLM INTEGRATION
-   def get_llm_feedback(self, user_answer, emotion, question_asked, speech_quality=None, top_3_emotions=None):
-       """Generate feedback using Gemini API with fallback to rule-based responses."""
-       if not self.chat:
-           return self._get_fallback_feedback(emotion)
+    def get_llm_feedback(self, user_answer, emotion, question_asked, speech_quality=None, top_3_emotions=None):
+        """Generate feedback using Gemini API with fallback to rule-based responses."""
+        if not self.chat:
+            return self._get_fallback_feedback(emotion)
 
 
-       try:
-           # Build emotion-specific strategy
-           emotion_strategies = {
-               Emotion.NERVOUS: "Be very reassuring. Use phrases like 'That's a good start' or 'I understand'. Normalize nervousness.",
-               Emotion.CONFIDENT: "Be professional and brief. Acknowledge competence. Keep it to 1-2 sentences.",
-               Emotion.NEUTRAL: "Be balanced. Provide constructive feedback.",
-               Emotion.DEFENSIVE: "Be gentle and non-judgmental. Avoid words like 'wrong' or 'mistake'. Validate their perspective."
-           }
+        try:
+            # Build emotion-specific strategy
+            emotion_strategies = {
+                Emotion.NERVOUS: "Be very reassuring. Use phrases like 'That's a good start' or 'I understand'. Normalize nervousness.",
+                Emotion.CONFIDENT: "Be professional and brief. Acknowledge competence. Keep it to 1-2 sentences.",
+                Emotion.NEUTRAL: "Be balanced. Provide constructive feedback.",
+                Emotion.DEFENSIVE: "Be gentle and non-judgmental. Avoid words like 'wrong' or 'mistake'. Validate their perspective."
+            }
 
 
-           # Build conversation history context
-           recent_history = self.conversation_history[-3:] if len(self.conversation_history) > 0 else []
-           history_text = "\n".join([f"- {h}" for h in recent_history])
+            # Build conversation history context
+            recent_history = self.conversation_history[-3:] if len(self.conversation_history) > 0 else []
+            history_text = "\n".join([f"- {h}" for h in recent_history])
 
 
-           # Build emotion distribution context
-           emotion_context = f"- Primary emotion: {emotion.value}"
-           if top_3_emotions and len(top_3_emotions) > 1:
-               distribution_str = ", ".join([f"{e.value} ({s:.0%})" for e, s in top_3_emotions[:3]])
-               emotion_context += f"\n- Emotion distribution during answer: {distribution_str}"
+            # Build emotion distribution context
+            emotion_context = f"- Primary emotion: {emotion.value}"
+            if top_3_emotions and len(top_3_emotions) > 1:
+                distribution_str = ", ".join([f"{e.value} ({s:.0%})" for e, s in top_3_emotions[:3]])
+                emotion_context += f"\n- Emotion distribution during answer: {distribution_str}"
 
 
-               if top_3_emotions[0][1] > 0.6:
-                   emotion_context += f"\n- Note: Candidate was predominantly {top_3_emotions[0][0].value} throughout the answer."
-               elif len(top_3_emotions) >= 2 and top_3_emotions[1][1] > 0.25:
-                   emotion_context += f"\n- Note: Mixed emotions detected - candidate showed {top_3_emotions[0][0].value} and {top_3_emotions[1][0].value}."
+                if top_3_emotions[0][1] > 0.6:
+                    emotion_context += f"\n- Note: Candidate was predominantly {top_3_emotions[0][0].value} throughout the answer."
+                elif len(top_3_emotions) >= 2 and top_3_emotions[1][1] > 0.25:
+                    emotion_context += f"\n- Note: Mixed emotions detected - candidate showed {top_3_emotions[0][0].value} and {top_3_emotions[1][0].value}."
 
 
-           # Build delivery quality context
-           delivery_context = ""
-           if speech_quality:
-               delivery_context = f"""
-DELIVERY QUALITY ANALYSIS:
-- Speech fluency: {speech_quality.value}"""
+            # Build delivery quality context
+            delivery_context = ""
+            if speech_quality:
+                delivery_context = f"""
+    DELIVERY QUALITY ANALYSIS:
+    - Speech fluency: {speech_quality.value}"""
 
 
-               if speech_quality == SpeechQuality.HESITANT:
-                   delivery_context += "\n- Note: If hesitant, gently encourage speaking more confidently without mentioning filler words directly."
-               elif speech_quality == SpeechQuality.FLUENT:
-                   delivery_context += "\n- Note: Excellent delivery - acknowledge this briefly."
+                if speech_quality == SpeechQuality.HESITANT:
+                    delivery_context += "\n- Note: If hesitant, gently encourage speaking more confidently without mentioning filler words directly."
+                elif speech_quality == SpeechQuality.FLUENT:
+                    delivery_context += "\n- Note: Excellent delivery - acknowledge this briefly."
 
 
-           # Build complete prompt
-           prompt = f"""MULTI-MODAL CONTEXT:
-{emotion_context}
-- Questions asked so far: {self.questions_asked}
-- Current phase: {self.current_phase}{delivery_context}
+            # Build complete prompt
+            prompt = f"""MULTI-MODAL CONTEXT:
+    {emotion_context}
+    - Questions asked so far: {self.questions_asked}
+    - Current phase: {self.current_phase}{delivery_context}
 
 
-CONVERSATION HISTORY:
-{history_text if history_text else "This is early in the conversation"}
+    CONVERSATION HISTORY:
+    {history_text if history_text else "This is early in the conversation"}
 
 
-CURRENT SITUATION:
-Question asked: "{question_asked}"
-User's answer: "{user_answer}"
+    CURRENT SITUATION:
+    Question asked: "{question_asked}"
+    User's answer: "{user_answer}"
 
 
-STRATEGY FOR {emotion.value.upper()}:
-{emotion_strategies[emotion]}
+    STRATEGY FOR {emotion.value.upper()}:
+    {emotion_strategies[emotion]}
 
 
-TASK:
-Provide brief, empathetic feedback (max 40 words, 2-3 sentences).
-- Focus primarily on the content and delivery of this specific answer
-- Use the emotion distribution to acknowledge emotional journey if relevant (e.g., "I can see you were a bit nervous but pushed through")
-- Be supportive and help build confidence
+    TASK:
+    Provide brief, empathetic feedback (max 40 words, 2-3 sentences).
+    - Focus primarily on the content and delivery of this specific answer
+    - Use the emotion distribution to acknowledge emotional journey if relevant (e.g., "I can see you were a bit nervous but pushed through")
+    - Be supportive and help build confidence
 
 
-Just provide the feedback text, nothing else."""
+    Just provide the feedback text, nothing else."""
 
 
-           # Call LLM
-           response = self.chat.send_message(prompt)
-           feedback = response.text.strip()
+            # Call LLM
+            response = self.chat.send_message(prompt)
+            feedback = response.text.strip()
 
 
-           # Validate response
-           if not self._validate_llm_response(feedback):
-               print("LLM response validation failed, using fallback")
-               return self._get_fallback_feedback(emotion)
+            # Validate response
+            if not self._validate_llm_response(feedback):
+                print("LLM response validation failed, using fallback")
+                return self._get_fallback_feedback(emotion)
 
 
-           self.llm_failures = 0  # Reset on success
-           return feedback
+            self.llm_failures = 0  # Reset on success
+            return feedback
 
 
-       except Exception as e:
-           print(f"LLM Error: {e}")
-           self.llm_failures += 1
-           return self._get_fallback_feedback(emotion)
+        except Exception as e:
+            print(f"LLM Error: {e}")
+            self.llm_failures += 1
+            return self._get_fallback_feedback(emotion)
 
     def _validate_llm_response(self, response):
         """Validate LLM response is appropriate"""
@@ -732,17 +1016,13 @@ Just provide the feedback text, nothing else."""
         return fallback_responses.get(emotion, "Thank you for your answer.")
 
     # BEHAVIOR ADAPTATION
-    def adjust_behavior_for_emotion(self, emotion):
-        """Dynamically adjust Furhat's behavior based on detected emotion."""
-        # TODO: FURHAT BEHAVIOR - Emotion-adaptive gestures
-        if emotion == Emotion.NERVOUS:
-            self.furhat.gesture(name="Smile")  # TODO: FURHAT BEHAVIOR - Reassuring gesture
-        elif emotion == Emotion.CONFIDENT:
-            self.furhat.gesture(name="Nod")  # TODO: FURHAT BEHAVIOR - Acknowledging gesture
-        elif emotion == Emotion.DEFENSIVE:
-            self.furhat.gesture(name="Oh")  # TODO: FURHAT BEHAVIOR - Gentle gesture
-        elif emotion == Emotion.NEUTRAL:
-            self.furhat.gesture(name="Nod")  # TODO: FURHAT BEHAVIOR - Neutral gesture
+    def adjust_behavior_for_emotion(self, emotion, confidence_score=None):
+        """Dynamically adjust Furhat's behavior based on detected emotion using GestureMapper."""
+        gesture_config = self.gesture_mapper.map_gesture(emotion, confidence_score)
+        if gesture_config.gesture_body:
+            self.furhat.gesture(body=gesture_config.gesture_body)
+        elif gesture_config.gesture_name:
+            self.furhat.gesture(name=gesture_config.gesture_name, blocking=gesture_config.blocking)
 
     # QUESTION SELECTION 
     def calculate_performance_score(self):
@@ -847,7 +1127,8 @@ Just provide the feedback text, nothing else."""
 
         # Attend to user before starting
         self.furhat.attend(user="CLOSEST")
-        self.furhat.gesture(name="BigSmile")
+        #self.furhat.gesture(name="BigSmile")
+        self.furhat.gesture(body=CUSTOM_SMILE_GESTURE) 
         self.furhat.say(
             text="Hello! I'm Furhat, and I'm here to help you practice for your upcoming interviews.",
             blocking=True
@@ -866,8 +1147,10 @@ Just provide the feedback text, nothing else."""
         # Listen for user name (with retry)
         response = self.furhat.listen()
         if response and response.message:
+            print(f"User said: {response.message}")
             self.user_name = response.message.strip().split()[0].capitalize()
-            self.furhat.gesture(name="Nod")  # Acknowledge hearing them
+            #self.furhat.gesture(name="Nod")  # Acknowledge hearing them
+            self.furhat.gesture(body=ATTENTIVE_LISTEN)
             time.sleep(0.2)
             self.furhat.gesture(name="BigSmile")
             self.furhat.say(text=f"Nice to meet you, {self.user_name}!", blocking=True)
@@ -878,8 +1161,9 @@ Just provide the feedback text, nothing else."""
             response = self.furhat.listen()
 
             if response and response.message:
+                print(f"User said: {response.message}")
                 self.user_name = response.message.strip().split()[0].capitalize()
-                self.furhat.gesture(name="Nod")
+                self.furhat.gesture(body=ATTENTIVE_LISTEN)
                 time.sleep(0.2)
                 self.furhat.gesture(name="BigSmile")
                 self.furhat.say(text=f"Nice to meet you, {self.user_name}!", blocking=True)
@@ -899,17 +1183,19 @@ Just provide the feedback text, nothing else."""
         response = self.furhat.listen()
 
         if response and response.message:
+            print(f"User said: {response.message}")
+            self.furhat.gesture(body=ATTENTIVE_LISTEN)
             answer = response.message.lower()
 
             # Check for "no" responses - STOP THE INTERVIEW
             if any(word in answer for word in ["no", "not", "wait", "stop", "cancel", "quit"]):
-                self.furhat.gesture(name="Nod")
-                self.furhat.say(text="No problem. Come back whenever you're ready. Goodbye!", blocking=True)
                 self.furhat.gesture(name="Smile")
+                self.furhat.say(text="No problem. Come back whenever you're ready. Goodbye!", blocking=True)
                 return False  # Exit introduction, don't continue
 
         # User is ready - proceed
-        self.furhat.gesture(name="Nod")
+        #self.furhat.gesture(name="Nod")
+        self.furhat.gesture(body=ATTENTIVE_LISTEN)
         self.furhat.say(text="Great!", blocking=True)
         return True  # Continue to warmup
 
@@ -940,6 +1226,13 @@ Just provide the feedback text, nothing else."""
         duration = end_time - start_time
 
         user_answer = response.message if response and response.message else "No response"
+        print(f"User said: {user_answer}")
+        self.furhat.gesture(body=ACTIVE_LISTEN)
+
+        # Acknowledge that we heard them before processing
+        #self.furhat.gesture(name="CloseEyes", blocking=False)
+        #time.sleep(0.3)
+        #self.furhat.gesture(name="Nod")
 
         # Handle case when Furhat doesn't catch the answer
         if user_answer == "No response":
@@ -952,6 +1245,7 @@ Just provide the feedback text, nothing else."""
             end_time = time.time()
             duration = end_time - start_time
             user_answer = response.message if response and response.message else "No response"
+            print(f"User said: {user_answer}")
 
             # If still no response, acknowledge and move on
             if user_answer == "No response":
@@ -962,7 +1256,7 @@ Just provide the feedback text, nothing else."""
         is_safe, warning = self.pre_filter_user_answer(user_answer)
         if not is_safe:
             print(f"Safety warning: Blocked potentially harmful input")
-            self.furhat.gesture(name="Nod")
+            self.furhat.gesture(body=ATTENTIVE_LISTEN)
             self.furhat.say(text=warning, blocking=True)
             time.sleep(0.3)
             # Re-ask the question
@@ -970,17 +1264,13 @@ Just provide the feedback text, nothing else."""
             self.furhat.say(text=question, blocking=True)
             response = self.furhat.listen()
             user_answer = response.message if response and response.message else "No response"
+            print(f"User said: {user_answer}")
             # If still not safe, just move on
             is_safe, _ = self.pre_filter_user_answer(user_answer)
             if not is_safe:
                 self.furhat.gesture(name="Smile")
                 self.furhat.say(text="Let's move on.", blocking=True)
                 return
-
-        # Acknowledge that we heard them before processing
-        self.furhat.gesture(name="CloseEyes", blocking=False)
-        time.sleep(0.3)
-        self.furhat.gesture(name="Nod")
 
         # Detect emotion from the answer
         emotion, confidence, top_3_emotions = self.detect_emotion()
@@ -1025,9 +1315,10 @@ Just provide the feedback text, nothing else."""
         print("\nPHASE: MAIN INTERVIEW")
         self.current_phase = "main"
 
-        target_questions = 3
+        target_main_questions = 3
+        main_questions_asked = 0
 
-        while self.questions_asked < target_questions + 1:  # +1 for warmup
+        while main_questions_asked < target_main_questions:
             time.sleep(0.5)
 
             print(f"\nTurn {self.questions_asked + 1}")
@@ -1036,11 +1327,13 @@ Just provide the feedback text, nothing else."""
             difficulty = self.select_question_difficulty()
             question = self.get_next_question(difficulty)
             self.questions_asked += 1
+            main_questions_asked += 1
 
             # Intro phrase before question (varied for each turn)
-            turn_in_main = self.questions_asked - 1
+            # Last question is when main_questions_asked == target_main_questions
+            is_last_question = (main_questions_asked == target_main_questions)
 
-            if turn_in_main == 0 or turn_in_main == 1:
+            if not is_last_question:
                 intros = [
                     "Here's the next one.",
                     "Moving on.",
@@ -1074,6 +1367,7 @@ Just provide the feedback text, nothing else."""
             duration = end_time - start_time
 
             user_answer = response.message if response and response.message else "No response"
+            print(f"User said: {user_answer}")
 
             # Handle case when Furhat doesn't catch the answer
             if user_answer == "No response":
@@ -1085,6 +1379,7 @@ Just provide the feedback text, nothing else."""
                 end_time = time.time()
                 duration = end_time - start_time
                 user_answer = response.message if response and response.message else "No response"
+                print(f"User said: {user_answer}")
 
                 # If still no response, acknowledge and move on
                 if user_answer == "No response":
@@ -1103,6 +1398,7 @@ Just provide the feedback text, nothing else."""
                 self.furhat.say(text=question, blocking=True)
                 response = self.furhat.listen()
                 user_answer = response.message if response and response.message else "No response"
+                print(f"User said: {user_answer}")
                 # If still not safe, just move on
                 is_safe, _ = self.pre_filter_user_answer(user_answer)
                 if not is_safe:
@@ -1315,7 +1611,7 @@ if __name__ == "__main__":
     API_KEY = os.environ.get("GEMINI_API_KEY")
 
     # Furhat configuration - update this to your Furhat's IP address
-    FURHAT_IP = "192.168.1.5"  # Change this to your Furhat's IP address
+    FURHAT_IP = "localhost"  # Change this to your Furhat's IP address
 
     # Start perception system in the background
     print("Starting emotion perception system...")
