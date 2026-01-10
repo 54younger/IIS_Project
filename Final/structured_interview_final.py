@@ -202,44 +202,6 @@ from datetime import datetime
 
 # CUSTOM GESTURE DEFINITIONS
 
-NERVOUS_BEHAVIOR = {
-    "name": "Nervous_behavior",
-    "frames": [
-        {
-            "time": [0.3, 1.2],
-            "persist": False,
-            "params": {
-                "SMILE_CLOSED": 0.7,
-                "EYE_SQUINT_LEFT": 0.25,
-                "EYE_SQUINT_RIGHT": 0.25,
-                "BROW_UP_LEFT": 0.2,
-                "BROW_UP_RIGHT": 0.2
-            }
-        },
-        {
-            "time": [0.5],
-            "persist": False,
-            "params": {"NECK_TILT": 10}
-        },
-        {
-            "time": [0.9],
-            "persist": False,
-            "params": {"NECK_TILT": 5}
-        },
-        {
-            "time": [1.2],
-            "persist": False,
-            "params": {"NECK_PAN": 3}
-        },
-        {
-            "time": [1.8],
-            "persist": False,
-            "params": {"reset": True}
-        }
-    ],
-    "class": "furhatos.gestures.Gesture"
-}
-
 CONFIDENT_BEHAVIOR = {
     "name": "Confident_behavior",
     "frames": [
@@ -249,31 +211,18 @@ CONFIDENT_BEHAVIOR = {
             "params": {
                 "BROW_UP_LEFT": 1.0,
                 "BROW_UP_RIGHT": 1.0,
-                "SURPRISE": 0.3
-            }
+                "SURPRISE": 0.3,
+            },
         },
         {
             "time": [0.3, 0.7],
             "persist": False,
-            "params": {
-                "SMILE_OPEN": 0.6,
-                "SMILE_CLOSED": 0.5
-            }
+            "params": {"SMILE_OPEN": 0.6, "SMILE_CLOSED": 0.5},
         },
-        {
-            "time": [0.4, 0.6],
-            "persist": False,
-            "params": {
-                "NECK_TILT": 6
-            }
-        },
-        {
-            "time": [0.9],
-            "persist": False,
-            "params": {"reset": True}
-        }
+        {"time": [0.4, 0.6], "persist": False, "params": {"NECK_TILT": 6}},
+        {"time": [0.9], "persist": False, "params": {"reset": True}},
     ],
-    "class": "furhatos.gestures.Gesture"
+    "class": "furhatos.gestures.Gesture",
 }
 
 DEFENSIVE_BEHAVIOR = {
@@ -287,31 +236,18 @@ DEFENSIVE_BEHAVIOR = {
                 "BROW_IN_RIGHT": 0.5,
                 "BROW_UP_LEFT": 0.4,
                 "BROW_UP_RIGHT": 0.4,
-                "EXPR_SAD": 0.15
-            }
+                "EXPR_SAD": 0.15,
+            },
         },
         {
             "time": [0.4, 1.3],
             "persist": False,
-            "params": {
-                "NECK_PAN": -15,
-                "NECK_TILT": 8
-            }
+            "params": {"NECK_PAN": -15, "NECK_TILT": 8},
         },
-        {
-            "time": [0.9, 1.4],
-            "persist": False,
-            "params": {
-                "SMILE_CLOSED": 0.4
-            }
-        },
-        {
-            "time": [1.8],
-            "persist": False,
-            "params": {"reset": True}
-        }
+        {"time": [0.9, 1.4], "persist": False, "params": {"SMILE_CLOSED": 0.4}},
+        {"time": [1.8], "persist": False, "params": {"reset": True}},
     ],
-    "class": "furhatos.gestures.Gesture"
+    "class": "furhatos.gestures.Gesture",
 }
 
 NEUTRAL_BEHAVIOR = {
@@ -320,28 +256,13 @@ NEUTRAL_BEHAVIOR = {
         {
             "time": [0.15, 0.6],
             "persist": False,
-            "params": {
-                "BROW_UP_LEFT": 0.25,
-                "BROW_UP_RIGHT": 0.25
-            }
+            "params": {"BROW_UP_LEFT": 0.25, "BROW_UP_RIGHT": 0.25},
         },
-        {
-            "time": [0.3],
-            "persist": False,
-            "params": {"NECK_TILT": 7}
-        },
-        {
-            "time": [0.5],
-            "persist": False,
-            "params": {"NECK_TILT": 2}
-        },
-        {
-            "time": [0.8],
-            "persist": False,
-            "params": {"reset": True}
-        }
+        {"time": [0.3], "persist": False, "params": {"NECK_TILT": 7}},
+        {"time": [0.5], "persist": False, "params": {"NECK_TILT": 2}},
+        {"time": [0.8], "persist": False, "params": {"reset": True}},
     ],
-    "class": "furhatos.gestures.Gesture"
+    "class": "furhatos.gestures.Gesture",
 }
 
 ATTENTIVE_LISTEN = {
@@ -468,7 +389,8 @@ class GestureMapper:
             GestureConfig with custom gesture body
         """
         if emotion == Emotion.NERVOUS:
-            return GestureConfig(gesture_body=NERVOUS_BEHAVIOR, blocking=False)
+            # Consistent with test_gestures_console.py which uses BrowRaise for nervous
+            return GestureConfig(gesture_name="BrowRaise", blocking=False)
         elif emotion == Emotion.CONFIDENT:
             return GestureConfig(gesture_body=CONFIDENT_BEHAVIOR, blocking=False)
         elif emotion == Emotion.DEFENSIVE:
@@ -642,11 +564,11 @@ def cv2_vid_with_emotion():
 
 
 # REAL-TIME GESTURE LOOP (runs during listening)
-def realtime_gesture_loop(furhat, poll_interval=0.2, sustain_map=None):
-    """
-    Background loop that triggers subtle gestures based on sustained emotion detection.
-    Only fires gestures while IS_LISTENING is set (during furhat.listen()).
-    """
+def realtime_gesture_loop(
+    furhat,
+    poll_interval=0.2,
+    sustain_map=None
+):
     # Default per-emotion sustain thresholds (seconds)
     if sustain_map is None:
         sustain_map = {
@@ -656,86 +578,86 @@ def realtime_gesture_loop(furhat, poll_interval=0.2, sustain_map=None):
             "Defensive": 5.0,
         }
 
-    def do_confident():
-        # Confident: two slow nods + slight brow raise
-        gesture = {
-            "name": "ConfidentNod2Brow_Slow",
-            "class": "furhatos.gestures.Gesture",
-            "frames": [
-                {"time": [0.00], "persist": False, "params": {"BROW_UP_LEFT": 0.45, "BROW_UP_RIGHT": 0.45}},
-                {"time": [0.25], "persist": False, "params": {"NECK_TILT": 3.0}},
-                {"time": [0.55], "persist": False, "params": {"NECK_TILT": 0.0}},
-                {"time": [0.75], "persist": False, "params": {"NECK_TILT": 2.6}},
-                {"time": [1.05], "persist": False, "params": {"NECK_TILT": 0.0}},
-                {"time": [1.20], "persist": False, "params": {"BROW_UP_LEFT": 0.30, "BROW_UP_RIGHT": 0.30}},
-                {"time": [1.60], "persist": False, "params": {"reset": True}},
-            ]
-        }
+    def _safe_call(fn):
         try:
-            furhat.gesture(body=gesture)
+            fn()
         except Exception:
             pass
+
+    def do_body(body):
+        _safe_call(lambda: furhat.gesture(body=body))
+
+    def do_name(name, blocking=False):
+        _safe_call(lambda: furhat.gesture(name=name, blocking=blocking))
+
+    def pause(seconds):
+        time.sleep(max(0.0, seconds))
+
+    def small_smile():
+        # Prefer built-in 'Smile'. If unavailable, fallback to a tiny closed-lip smile.
+        try:
+            furhat.gesture(name="Smile", blocking=False)
+            return
+        except Exception:
+            pass
+        
+        tiny_smile = {
+            "name": "TinySmile_fallback",
+            "frames": [
+                {"time": [0.10, 0.45], "persist": False, "params": {"SMILE_CLOSED": 0.25}},
+                {"time": [0.65], "persist": False, "params": {"reset": True}},
+            ],
+            "class": "furhatos.gestures.Gesture",
+        }
+        do_body(tiny_smile)
+
+    def brow_raise_prompting():
+        do_name("BrowRaise", blocking=False)
+
+    def micro_nod(times=3, amplitude=3, interval=0.5):
+        body = {
+            "name": "MicroNod",
+            "frames": [
+                {"time": [0.28], "persist": False, "params": {"NECK_TILT": amplitude}},
+                {"time": [0.58], "persist": False, "params": {"NECK_TILT": 0}},
+                {"time": [1.88], "persist": False, "params": {"reset": True}},
+            ],
+            "class": "furhatos.gestures.Gesture",
+        }
+        for i in range(times):
+            do_body(body)
+            pause(interval)
+
+    def do_confident():
+        # Confident custom + small smile + micro nod (3x, slightly faster)
+        do_body(CONFIDENT_BEHAVIOR)
+        pause(0.50)
+        small_smile()
+        pause(0.50)
+        micro_nod(times=3, amplitude=3, interval=0.14)
 
     def do_nervous():
-        # Nervous: closed-mouth smile + mild squint + brow raise + small nod
-        base_params = {
-            "SMILE_CLOSED": 0.7,
-            "EYE_SQUINT_LEFT": 0.25,
-            "EYE_SQUINT_RIGHT": 0.25,
-            "BROW_UP_LEFT": 0.2,
-            "BROW_UP_RIGHT": 0.2
-        }
-        gesture = {
-            "name": "Nervous_FromPresetPlusNod",
-            "class": "furhatos.gestures.Gesture",
-            "frames": [
-                {"time": [0.00, 1.20], "persist": False, "params": base_params},
-                {"time": [0.45], "persist": False, "params": {"NECK_TILT": 3.0}},
-                {"time": [0.70], "persist": False, "params": {"NECK_TILT": 0.0}},
-                {"time": [1.35], "persist": False, "params": {"SMILE_CLOSED": 0.35}},
-                {"time": [1.65], "persist": False, "params": {"reset": True}},
-            ]
-        }
-        try:
-            furhat.gesture(body=gesture)
-        except Exception:
-            pass
+        # BrowRaise + small smile + micro nod (slow, 2x)
+        brow_raise_prompting()
+        pause(0.50)
+        small_smile()
+        pause(0.50)
+        micro_nod(times=2, amplitude=2)
 
     def do_neutral():
-        # Neutral: thoughtful look with slight brow-in, mild squint, subtle nod
-        gesture = {
-            "name": "NeutralThoughtful_Slow",
-            "class": "furhatos.gestures.Gesture",
-            "frames": [
-                {"time": [0.00, 1.60], "persist": False, "params": {
-                    "BROW_IN_LEFT": 0.15, "BROW_IN_RIGHT": 0.15,
-                    "EYE_SQUINT_LEFT": 0.10, "EYE_SQUINT_RIGHT": 0.10
-                }},
-                {"time": [0.35], "persist": False, "params": {"NECK_TILT": 4.0}},
-                {"time": [0.85], "persist": False, "params": {"NECK_TILT": 1.0}},
-                {"time": [1.90], "persist": False, "params": {"reset": True}},
-            ]
-        }
-        try:
-            furhat.gesture(body=gesture)
-        except Exception:
-            pass
+        # Neutral custom + small smile + micro nod (small, 2x)
+        do_body(NEUTRAL_BEHAVIOR)
+        pause(1.50)
+        # small_smile()
+        micro_nod(times=2, amplitude=5)
 
     def do_defensive():
-        # Defensive: gaze away + head pan and tilt
-        gesture = {
-            "name": "DefensiveGazeAway_Slow",
-            "class": "furhatos.gestures.Gesture",
-            "frames": [
-                {"time": [0.00, 2.00], "persist": False, "params": {"GAZE_PAN": -25}},
-                {"time": [0.20, 2.10], "persist": False, "params": {"NECK_PAN": -10, "NECK_TILT": 6}},
-                {"time": [2.50], "persist": False, "params": {"reset": True}},
-            ]
-        }
-        try:
-            furhat.gesture(body=gesture)
-        except Exception:
-            pass
+        # Defensive custom + small smile + micro nod (2x)
+        do_body(DEFENSIVE_BEHAVIOR)
+        pause(0.12)
+        small_smile()
+        pause(0.10)
+        micro_nod(times=2, amplitude=2, interval=0.18)
 
     # Emotion label to gesture function mapping
     emotion_to_action = {
@@ -751,6 +673,7 @@ def realtime_gesture_loop(furhat, poll_interval=0.2, sustain_map=None):
     next_fire_t = None
 
     def get_sustain_seconds(emo: str) -> float:
+        # Sustain duration per emotion
         return float(sustain_map.get(emo, 5.0))
 
     while True:
@@ -785,6 +708,7 @@ def realtime_gesture_loop(furhat, poll_interval=0.2, sustain_map=None):
             if action is not None:
                 action()
             next_fire_t = now + get_sustain_seconds(emo)
+
 
 
 # INTERVIEW COACH CLASS
