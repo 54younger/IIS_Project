@@ -2,3 +2,7 @@
 .env
 # Ignore Python cache files
 __pycache__/behavioral_interview.cpython-312.pyc
+*.py
+weights/
+*.json
+!structured_interviews.py

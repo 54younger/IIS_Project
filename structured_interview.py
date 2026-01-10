@@ -703,6 +703,131 @@ class InterviewCoach:
                 )
             )
 
+    # ENHANCED LISTENING WITH HESITATION DETECTION
+    def listen_with_patience(self, context="normal"):
+        """
+        Listen for user speech. 
+        
+        Note: FurhatRemoteAPI Python library doesn't support listen parameters.
+        The default settings are:
+        - end_speech_timeout: 1.0s (amount of silence to detect end-of-speech)
+        - no_speech_timeout: 8.0s (timeout if user doesn't start speaking)
+        
+        To compensate for the short 1s timeout, use listen_with_hesitation_detection()
+        which continues listening if user only said filler words.
+        
+        Args:
+            context: "introduction", "normal", or "thinking" (currently not used due to API limitations)
+        
+        Returns:
+            Furhat listen response object
+        """
+        # Simple listen - no parameters supported by furhat_remote_api library
+        response = self.furhat.listen()
+        return response
+
+    def is_hesitation_only(self, text):
+        """
+        Detect if the response contains only filler words/hesitation words, indicating user is still thinking.
+        
+        Args:
+            text: User's response text
+        
+        Returns:
+            bool: True if only hesitation words, False if contains substantive content
+        """
+        if not text or text == "No response":
+            return False
+        
+        # Common filler/hesitation words in English and Chinese
+        hesitation_words = [
+            # English
+            'um', 'uh', 'umm', 'uhh', 'ummm', 'uhhh',
+            'hmm', 'hmmm', 'err', 'errr', 'ah', 'ahh',
+            'well', 'so', 'like', 'you know',
+            
+            # Standalone connectors (said while thinking)
+            'and', 'but', 'or', 'the', 'a',
+        ]
+        
+        # Clean text: convert to lowercase, remove punctuation
+        clean_text = text.lower().strip()
+        for punct in ['.', ',', '!', '?', '...']:
+            clean_text = clean_text.replace(punct, ' ')
+        
+        words = clean_text.split()
+        
+        # If no words, count as hesitation
+        if not words:
+            return True
+        
+        # If all words are hesitation words, or only 1-2 very short words
+        non_hesitation_words = [w for w in words if w not in hesitation_words and len(w) > 2]
+        
+        # Only hesitation words, or only a few short words (possibly incomplete thought)
+        if len(non_hesitation_words) == 0:
+            return True
+        
+        # If total word count is low (<=3) and mostly hesitation words
+        if len(words) <= 3 and len(non_hesitation_words) <= 1:
+            return True
+        
+        return False
+
+    def listen_with_hesitation_detection(self, context="normal", max_attempts=3):
+        """
+        Smart listening: automatically continue listening if user only said filler words.
+        
+        Args:
+            context: Listening context ("introduction", "normal", "thinking")
+            max_attempts: Maximum number of attempts to prevent infinite loop
+        
+        Returns:
+            Complete user answer (concatenated from all segments)
+        """
+        full_answer = []
+        attempts = 0
+        
+        while attempts < max_attempts:
+            attempts += 1
+            
+            # Use configured listening parameters
+            response = self.listen_with_patience(context=context)
+            
+            if not response or not response.message:
+                # No response
+                if attempts == 1:
+                    # No response on first attempt, return empty
+                    return "No response"
+                else:
+                    # Had response before, now none, finish
+                    break
+            
+            current_text = response.message.strip()
+            
+            # Detect if only hesitation words
+            if self.is_hesitation_only(current_text):
+                print(f"[HESITATION DETECTED] User said: '{current_text}' - continuing to listen...")
+                full_answer.append(current_text)
+                
+                # Give user visual feedback: nod to show we're listening
+                self.furhat.gesture(name="Nod")
+                
+                # Continue listening (don't speak, just wait)
+                continue
+            else:
+                # Has substantive content, add and finish
+                full_answer.append(current_text)
+                break
+        
+        # Concatenate all segments
+        if full_answer:
+            complete_answer = ' '.join(full_answer)
+            print(f"[COMPLETE ANSWER] Collected {len(full_answer)} segments: '{complete_answer}'")
+            return complete_answer
+        else:
+            return "No response"
+
     # EMOTION DETECTION
     def detect_emotion(self):
         """
@@ -1144,11 +1269,11 @@ class InterviewCoach:
         
         self.furhat.gesture(name="BrowRaise")
         self.furhat.say(text="What's your name?", blocking=True)
-        # Listen for user name (with retry)
-        response = self.furhat.listen()
-        if response and response.message:
-            print(f"User said: {response.message}")
-            self.user_name = response.message.strip().split()[0].capitalize()
+        # Listen for user name with hesitation detection
+        user_name_response = self.listen_with_hesitation_detection(context="introduction", max_attempts=2)
+        if user_name_response and user_name_response != "No response":
+            print(f"User said: {user_name_response}")
+            self.user_name = user_name_response.strip().split()[0].capitalize()
             #self.furhat.gesture(name="Nod")  # Acknowledge hearing them
             self.furhat.gesture(body=ATTENTIVE_LISTEN)
             time.sleep(0.2)
@@ -1158,11 +1283,11 @@ class InterviewCoach:
             # FALLBACK: Didn't hear name - try once more
             self.furhat.gesture(name="BrowFrown")
             self.furhat.say(text="Sorry, I didn't catch that. Could you say your name again?", blocking=True)
-            response = self.furhat.listen()
+            user_name_response = self.listen_with_hesitation_detection(context="introduction", max_attempts=2)
 
-            if response and response.message:
-                print(f"User said: {response.message}")
-                self.user_name = response.message.strip().split()[0].capitalize()
+            if user_name_response and user_name_response != "No response":
+                print(f"User said: {user_name_response}")
+                self.user_name = user_name_response.strip().split()[0].capitalize()
                 self.furhat.gesture(body=ATTENTIVE_LISTEN)
                 time.sleep(0.2)
                 self.furhat.gesture(name="BigSmile")
@@ -1179,13 +1304,13 @@ class InterviewCoach:
         self.furhat.gesture(name="BrowRaise")
         self.furhat.say(text="Are you ready to begin?", blocking=True)
 
-        # Listen for confirmation
-        response = self.furhat.listen()
+        # Listen for confirmation with hesitation detection
+        ready_response = self.listen_with_hesitation_detection(context="introduction", max_attempts=2)
 
-        if response and response.message:
-            print(f"User said: {response.message}")
+        if ready_response and ready_response != "No response":
+            print(f"User said: {ready_response}")
             self.furhat.gesture(body=ATTENTIVE_LISTEN)
-            answer = response.message.lower()
+            answer = ready_response.lower()
 
             # Check for "no" responses - STOP THE INTERVIEW
             if any(word in answer for word in ["no", "not", "wait", "stop", "cancel", "quit"]):
@@ -1219,13 +1344,12 @@ class InterviewCoach:
         # Clear emotion buffer to collect emotions during answer
         emotion_aggregator.clear()
 
-        # Listen to answer (emotions are collected during this time)
+        # Listen to answer with hesitation detection (emotions are collected during this time)
         start_time = time.time()
-        response = self.furhat.listen()
+        user_answer = self.listen_with_hesitation_detection(context="normal", max_attempts=3)
         end_time = time.time()
         duration = end_time - start_time
 
-        user_answer = response.message if response and response.message else "No response"
         print(f"User said: {user_answer}")
         self.furhat.gesture(body=ACTIVE_LISTEN)
 
@@ -1241,10 +1365,9 @@ class InterviewCoach:
             # Give them another chance
             start_time = time.time()
             
-            response = self.furhat.listen()
+            user_answer = self.listen_with_hesitation_detection(context="normal", max_attempts=3)
             end_time = time.time()
             duration = end_time - start_time
-            user_answer = response.message if response and response.message else "No response"
             print(f"User said: {user_answer}")
 
             # If still no response, acknowledge and move on
@@ -1262,8 +1385,7 @@ class InterviewCoach:
             # Re-ask the question
             self.furhat.gesture(name="BrowRaise")
             self.furhat.say(text=question, blocking=True)
-            response = self.furhat.listen()
-            user_answer = response.message if response and response.message else "No response"
+            user_answer = self.listen_with_hesitation_detection(context="normal", max_attempts=3)
             print(f"User said: {user_answer}")
             # If still not safe, just move on
             is_safe, _ = self.pre_filter_user_answer(user_answer)
@@ -1360,25 +1482,32 @@ class InterviewCoach:
             # Clear emotion buffer to collect emotions during answer
             emotion_aggregator.clear()
 
-            # Listen to answer (emotions are collected during this time)
+            # Select appropriate listening context and max attempts based on question difficulty
+            # Difficult questions: give more thinking time and more hesitation detection attempts
+            if difficulty == "hard":
+                listen_context = "thinking"
+                max_attempts = 4  # Allow more hesitation attempts for difficult questions
+            else:
+                listen_context = "normal"
+                max_attempts = 3
+
+            # Listen to answer with smart hesitation detection (emotions are collected during this time)
             start_time = time.time()
-            response = self.furhat.listen()
+            user_answer = self.listen_with_hesitation_detection(context=listen_context, max_attempts=max_attempts)
             end_time = time.time()
             duration = end_time - start_time
 
-            user_answer = response.message if response and response.message else "No response"
             print(f"User said: {user_answer}")
 
             # Handle case when Furhat doesn't catch the answer
             if user_answer == "No response":
                 self.furhat.gesture(name="BrowFrown")
                 self.furhat.say(text="I didn't catch that. Could you please try again?", blocking=True)
-                # Give them another chance
+                # Give them another chance with same context
                 start_time = time.time()
-                response = self.furhat.listen()
+                user_answer = self.listen_with_hesitation_detection(context=listen_context, max_attempts=max_attempts)
                 end_time = time.time()
                 duration = end_time - start_time
-                user_answer = response.message if response and response.message else "No response"
                 print(f"User said: {user_answer}")
 
                 # If still no response, acknowledge and move on
@@ -1396,8 +1525,7 @@ class InterviewCoach:
                 # Re-ask the question
                 self.furhat.gesture(name="BrowRaise")
                 self.furhat.say(text=question, blocking=True)
-                response = self.furhat.listen()
-                user_answer = response.message if response and response.message else "No response"
+                user_answer = self.listen_with_hesitation_detection(context=listen_context, max_attempts=max_attempts)
                 print(f"User said: {user_answer}")
                 # If still not safe, just move on
                 is_safe, _ = self.pre_filter_user_answer(user_answer)
