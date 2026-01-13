@@ -2,3 +2,5 @@
 .env
 # Ignore Python cache files
 __pycache__/behavioral_interview.cpython-312.pyc
+.env
+model_configuration/best_svm_model_spp.pkl
