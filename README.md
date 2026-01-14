@@ -9,7 +9,7 @@ An adaptive interview practice system using the Furhat robot with real-time emot
 ├── emotion_classification_experiments.ipynb # ML experiments notebook
 ├── model_configuration/                     # Trained model files
 │   ├── best_svm_model_facial.pkl           # SVM classifier
-│   ├── dino_model_config_facial.txt        # DINOv2 model config
+│   ├── dino_model_config_facial.txt        # DiNOv3 model config
 │   └── class_names_facial.txt              # Emotion labels
 └── .env                                     # API keys
 ```
@@ -62,7 +62,7 @@ Training uses DiffusionFER dataset with emotions mapped to 4 interview-relevant 
 
 | Model | F1 Score |
 |-------|----------|
-| DINOv2 + 8 Facial Regions + SVM | 88.1% |
+| DiNOv3 + 8 Facial Regions + SVM | 88.1% |
 
 ## Interview Flow
 
@@ -73,7 +73,7 @@ Training uses DiffusionFER dataset with emotions mapped to 4 interview-relevant 
 
 ## System Overview
 
-- **Emotion Classification**: DINOv2 + SVM (4 classes: Nervous, Defensive, Confident, Neutral)
+- **Emotion Classification**: DiNOv3 + SVM (4 classes: Nervous, Defensive, Confident, Neutral)
 - **Temporal Aggregation**: Exponential decay smoothing (window=30, decay=0.98)
 - **Adaptive Difficulty**: Question selection based on emotion + speech quality
 - **LLM Feedback**: Gemini API with emotion-aware prompting
@@ -85,7 +85,7 @@ Training uses DiffusionFER dataset with emotions mapped to 4 interview-relevant 
 
 | Component | Function | Description |
 |-----------|----------|-------------|
-| `cv2_vid_with_emotion()` | Perception | Captures webcam frames, extracts DINOv2 facial region features, predicts emotions via SVM |
+| `cv2_vid_with_emotion()` | Perception | Captures webcam frames, extracts DiNOv3 facial region features, predicts emotions via SVM |
 | `EmotionAggregator` | Temporal Smoothing | Aggregates predictions using exponential decay (window=30, λ=0.98) |
 | `realtime_gesture_loop()` | Real-time Gestures | Triggers robot gestures when emotion sustained for threshold duration |
 | `InterviewCoach` | Main Controller | Manages interview flow, question selection, feedback generation |
@@ -104,7 +104,7 @@ Training uses DiffusionFER dataset with emotions mapped to 4 interview-relevant 
 ### Data Flow
 
 ```
-Webcam → Face Detection → DINOv2 Features → SVM → Emotion Aggregator
+Webcam → Face Detection → DiNOv3 Features → SVM → Emotion Aggregator
                                                          ↓
 User Speech → Furhat ASR → Speech Analysis ────→ Performance Score
                                                          ↓
