@@ -104,13 +104,38 @@ Training uses DiffusionFER dataset with emotions mapped to 4 interview-relevant 
 ### Data Flow
 
 ```
-Webcam → Face Detection → DiNOv3 Features → SVM → Emotion Aggregator
-                                                         ↓
-User Speech → Furhat ASR → Speech Analysis ────→ Performance Score
-                                                         ↓
-                                            Question Difficulty Selection
-                                                         ↓
-                              Gemini API ←── Emotion + Answer ──→ Feedback
-                                                         ↓
-                                               Robot Gesture + Speech
+                 (Round-based controller)
+┌──────────────────────────────────────────────────────────────┐
+│            Question Difficulty Selection (QDS)               │
+│  Round 1: fixed easy init                                    │
+│  Round 2–4: adaptive using previous Performance Score        │
+└──────────────────────────────────────────────────────────────┘
+                     │   selects next question difficulty
+                     ▼
+┌──────────────────────────────────────────────────────────────┐
+│  User Interaction                                            │
+│  Webcam → Face Detection → DINOv3 Features → SVM →           │
+│          Emotion Aggregator                                  │
+│  User Speech → Furhat ASR → Speech Analysis                  │
+└──────────────────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Performance Score                         │
+└──────────────────────────────────────────────────────────────┘
+                     │
+        feedback ↑   │  (score_{t} updates difficulty_{t+1})
+                     │
+                     └───────────────► back to QDS
+                                      (for Round 2–4)
+                     │
+                     ▼
+┌──────────────────────────────────────────────────────────────┐
+│   Gemini API  ←── Emotion + Answer + Difficulty ──→ Feedback │
+└──────────────────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────────────────────────┐
+│                 Robot Gesture + Speech                       │
+└──────────────────────────────────────────────────────────────┘
 ```
